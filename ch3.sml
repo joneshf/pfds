@@ -278,3 +278,67 @@ struct
       merge (rev ts1, ts2)
     end
 end
+
+(* Exercise 3.6 *)
+functor BinomialHeap (Element : ORDERED) : HEAP =
+struct
+  structure Elem = Element
+
+  datatype Tree = Node of Elem.T * Tree list
+  type Heap = (int * Tree) list
+
+  val empty = []
+  val isEmpty = null
+
+  fun rank (Node (_, t)) = 0
+  fun root (Node (x, _)) = x
+  fun link (t1 as Node (x1, c1), t2 as Node (x2, c2)) =
+    if Elem.leq (x1, x2) then
+      Node (x1, t2 :: c1)
+    else
+      Node (x2, t1 :: c2)
+  fun insTree (t, []) = [(rank t, t)]
+    | insTree (t, ts as (r, t') :: ts') =
+      if rank t < r then
+        (rank t, t) :: ts
+      else
+        insTree (link (t, t'), ts')
+
+  fun insert (x, ts) = insTree (Node (x, []), ts)
+  fun merge (ts, []) = ts
+    | merge ([], ts) = ts
+    | merge (ts1 as (r1, t1) :: ts1', ts2 as (r2, t2) :: ts2') =
+      if r1 < r2 then
+        (r1, t1) :: merge (ts1', ts2)
+      else if r2 < r1 then
+        (r2, t2) :: merge (ts1, ts2')
+      else
+        insTree (link (t1, t2), merge (ts1', ts2'))
+
+  fun removeMinTree [] = raise EMPTY
+    | removeMinTree [(_, t)] = (t, [])
+    | removeMinTree ((r, t)::ts) =
+      let
+        val (t', ts') = removeMinTree ts
+      in
+        if Elem.leq (root t, root t') then
+          (t, ts)
+        else
+          (t', (r, t) :: ts')
+      end
+
+  fun findMin [] = raise EMPTY
+    | findMin [(_, t)] = root t
+    | findMin ((_, t)::ts) =
+      let
+        val t' = findMin ts
+      in
+        if Elem.leq (root t, t') then root t else t'
+      end
+  fun deleteMin ts =
+    let
+      val (Node (x, ts1), ts2) = removeMinTree ts
+    in
+      merge (List.map (fn t => (rank t, t)) (rev ts1), ts2)
+    end
+end
